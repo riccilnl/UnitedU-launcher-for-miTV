@@ -1021,7 +1021,7 @@ class MainActivity : ComponentActivity() {
                             onFocus = { id -> if (live) shellStack = shellSetFocus(shellStack, id) },
                             onOpenSystemSettings = {
                                 // `open()` 失败时已经会 toast(`toast_open_failed`,带异常信息)。
-                                if (live) open(Intent(Settings.ACTION_SETTINGS))
+                                if (live) open(MiTvFreeguy.settingsIntent() ?: Intent(Settings.ACTION_SETTINGS))
                             },
                             // R128:每次打开关于页都从「检查更新」开始(目标清空);恢复默认确认层回来时不经这里,目标留着。
                             onOpenAbout = { if (live) { aboutFocus = null; about = true } },

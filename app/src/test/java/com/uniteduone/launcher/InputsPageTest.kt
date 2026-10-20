@@ -37,6 +37,12 @@ class InputsPageTest {
         assertEquals(listOf(INPUTS_RESTORE_ID), inputsCapsuleIds(all))
     }
 
+    @Test fun freeguyKeepsAnalogueAndDigitalTunersDistinct() {
+        val all = listOf(atv.copy(label = "ATV"), dtv.copy(label = "DTMB"), hdmi(1))
+        val data = inputsPageData(all, emptySet(), emptyMap(), preserveTuners = true)
+        assertEquals(listOf("mtk/analog", "sony/dtv", "hw/HDMI1"), data.visible.map { it.id })
+    }
+
     @Test fun initialFocusPrefersTheCurrentInput() {
         val ids = listOf("hw/HDMI1", "hw/HDMI2", INPUTS_RESTORE_ID)
         assertEquals("hw/HDMI2", inputsInitialFocus(ids, current = "hw/HDMI2"))

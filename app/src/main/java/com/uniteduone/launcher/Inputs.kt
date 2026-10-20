@@ -51,6 +51,14 @@ object Inputs {
             return emptyList()
         }
         val list = runCatching { tim.tvInputList }.getOrDefault(emptyList())
+        if (MiTvFreeguy.isDevice()) {
+            // Only physical connectors: HW8 is not a fourth HDMI port.
+            return list.mapNotNull { info ->
+                MiTvFreeguy.sourceFor(info.id)?.let { source ->
+                    InputEntry(info.id, source.label, source.passthrough)
+                }
+            }
+        }
         return list.mapNotNull { info ->
             runCatching {
                 val keep = info.isPassthroughInput || info.type == TvInputInfo.TYPE_TUNER
@@ -83,6 +91,10 @@ object Inputs {
      * ②默认桌面身份发起 startActivity 会不会被后台启动限制拦(与 RelaunchAfterUpdate 同类风险)。
      */
     fun launch(ctx: Context, inputId: String): Boolean {
+        if (MiTvFreeguy.isDevice()) {
+            val source = MiTvFreeguy.sourceFor(inputId) ?: return false
+            return MiTvFreeguy.launch(ctx, source)
+        }
         val entry = load(ctx).firstOrNull { it.id == inputId }
         val uri = if (entry == null || entry.isPassthrough) {
             runCatching { TvContract.buildChannelUriForPassthroughInput(inputId) }.getOrNull()

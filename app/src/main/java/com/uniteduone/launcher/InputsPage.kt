@@ -41,8 +41,12 @@ data class InputsPageData(val visible: List<InputEntry>, val hiddenCount: Int)
  * [hiddenCount] 只数**这台电视现在还列得出来**的输入里被隐藏的——hidden-inputs.json 里残留的旧 id 不算,
  * 否则「恢复隐藏的输入源 2 个」按下去什么都没回来。
  */
-internal fun inputsPageData(all: List<InputEntry>, hidden: Set<String>, names: Map<String, String>): InputsPageData {
-    val merged = mergeTuners(dedupeCec(orderInputs(all)))
+internal fun inputsPageData(
+    all: List<InputEntry>, hidden: Set<String>, names: Map<String, String>,
+    preserveTuners: Boolean = false,
+): InputsPageData {
+    val ordered = dedupeCec(orderInputs(all))
+    val merged = if (preserveTuners) ordered else mergeTuners(ordered)
     return InputsPageData(applyInputPrefs(merged, hidden, names), merged.count { it.id in hidden })
 }
 
@@ -60,6 +64,7 @@ internal fun loadInputsPage(ctx: Context): InputsPageData =
         runCatching { Inputs.load(ctx) }.getOrDefault(emptyList()),
         runCatching { HiddenInputs.read(ctx) }.getOrDefault(emptySet()),
         runCatching { Titles.read(ctx) }.getOrDefault(emptyMap()),
+        preserveTuners = MiTvFreeguy.isDevice(),
     )
 
 /**
