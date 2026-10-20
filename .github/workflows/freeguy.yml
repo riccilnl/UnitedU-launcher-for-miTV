@@ -22,7 +22,11 @@ jobs:
         with:
           gradle-version: '8.10.2'
       - name: Install Android SDK
-        run: sdkmanager "platforms;android-35" "build-tools;35.0.0"
+        run: |
+          export ANDROID_HOME="${ANDROID_HOME:-/usr/local/lib/android/sdk}"
+          SDKMANAGER="$(find "$ANDROID_HOME/cmdline-tools" -name sdkmanager -type f | head -1)"
+          test -x "$SDKMANAGER"
+          "$SDKMANAGER" --sdk_root="$ANDROID_HOME" "platforms;android-35" "build-tools;35.0.0"
       - name: Unit tests and APK
         run: gradle --no-daemon :app:testDebugUnitTest :app:assembleRelease
       - name: Preserve test APK
