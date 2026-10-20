@@ -113,8 +113,8 @@ internal val layoutWrites: CoroutineDispatcher = Dispatchers.IO.limitedParalleli
  * (与「跳过」相同),桌面空着但编辑页的「+」都在,不是死胡同。在 [Layout] 的锁里调用(IO 线程)。
  */
 internal fun installedDefaultLayout(ctx: Context): List<LayoutRow> =
-    runCatching { plannedLayout(DEFAULT_LAYOUT, installedDefaultApps(ctx).keys) }
-        .getOrElse { skippedLayout(DEFAULT_LAYOUT) }
+    runCatching { plannedLayout(defaultLayoutForDevice(ctx), installedDefaultApps(ctx).keys) }
+        .getOrElse { skippedLayout(defaultLayoutForDevice(ctx)) }
 
 /** R164:至少有一行应用行。[Layout.parse] 与 [Layout.write] 共用这一条,写出去的东西一定读得回来。 */
 internal fun hasAppRow(rows: List<LayoutRow>): Boolean = rows.any { !it.isChannel }

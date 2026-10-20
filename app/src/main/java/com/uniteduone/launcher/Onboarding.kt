@@ -291,17 +291,20 @@ internal fun resolveOnboarding(ctx: Context): Boolean {
  */
 @WorkerThread
 internal fun installedDefaultApps(ctx: Context): Map<String, String> {
-    val wanted = DEFAULT_LAYOUT.flatMap { it.apps }.toSet()
+    val wanted = defaultLayoutForDevice(ctx).flatMap { it.apps }.toSet()
     return Apps.load(ctx, extraPackages = wanted, withBitmaps = emptySet(), withLabels = wanted)
         .filterKeys { it in wanted }
         .mapValues { it.value.label }
 }
 
+internal fun defaultLayoutForDevice(ctx: Context): List<LayoutRow> =
+    defaultLayoutWithKids(DEFAULT_LAYOUT, MiTvKidsChannel.available(ctx))
+
 /** 第 2 步屏幕上的计划:写盘用的那份布局([plannedLayout])去掉空行、配上显示名([planView])。 */
 @WorkerThread
 internal fun onboardingPlan(ctx: Context): List<PlanRow> {
     val labels = installedDefaultApps(ctx)
-    return planView(plannedLayout(DEFAULT_LAYOUT, labels.keys), labels)
+    return planView(plannedLayout(defaultLayoutForDevice(ctx), labels.keys), labels)
 }
 
 /**
@@ -310,7 +313,7 @@ internal fun onboardingPlan(ctx: Context): List<PlanRow> {
  */
 @WorkerThread
 internal fun writeOnboardingLayout(ctx: Context, fill: Boolean): Boolean = runCatching {
-    val rows = if (fill) plannedLayout(DEFAULT_LAYOUT, installedDefaultApps(ctx).keys)
-    else skippedLayout(DEFAULT_LAYOUT)
+    val rows = if (fill) plannedLayout(defaultLayoutForDevice(ctx), installedDefaultApps(ctx).keys)
+    else skippedLayout(defaultLayoutForDevice(ctx))
     Layout.write(ctx, rows)
 }.getOrDefault(false)
