@@ -1,0 +1,46 @@
+name: MiTV Kids Shortcut APK
+
+on:
+  push:
+    branches: [freeguy]
+    paths:
+      - 'extras/mitv-kids-shortcut/**'
+      - '.github/workflows/mitv-kids-shortcut.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  build:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-java@v6
+        with:
+          distribution: temurin
+          java-version: '17'
+      - uses: gradle/actions/setup-gradle@v6
+        with:
+          gradle-version: '8.10.2'
+      - name: Install Android SDK 35
+        run: |
+          export ANDROID_HOME="${ANDROID_HOME:-/usr/local/lib/android/sdk}"
+          SDKMANAGER="$(find "$ANDROID_HOME/cmdline-tools" -name sdkmanager -type f | head -1)"
+          test -x "$SDKMANAGER"
+          "$SDKMANAGER" --sdk_root="$ANDROID_HOME" "platforms;android-35" "build-tools;35.0.0"
+      - name: Build standalone shortcut
+        run: gradle -p extras/mitv-kids-shortcut :app:assembleDebug --no-daemon
+      - name: Validate APK
+        run: |
+          APK=extras/mitv-kids-shortcut/app/build/outputs/apk/debug/app-debug.apk
+          test -s "$APK"
+          "$ANDROID_HOME/build-tools/35.0.0/apksigner" verify "$APK"
+          "$ANDROID_HOME/build-tools/35.0.0/aapt" dump badging "$APK"
+          sha256sum "$APK"
+      - uses: actions/upload-artifact@v7
+        with:
+          name: mitv-kids-shortcut-debug
+          path: extras/mitv-kids-shortcut/app/build/outputs/apk/debug/app-debug.apk
+          if-no-files-found: error

@@ -45,12 +45,8 @@ fun pruneMissingPackages(ctx: Context, now: Long = SystemClock.elapsedRealtime()
     }
     val pm = ctx.packageManager
     fun presence(pkg: String): PkgPresence = try {
-        if (pkg == MiTvKidsChannel.SHORTCUT_ID) {
-            if (MiTvKidsChannel.available(ctx)) PkgPresence.INSTALLED else PkgPresence.MISSING
-        } else {
-            pm.getPackageInfo(pkg, 0)
-            PkgPresence.INSTALLED
-        }
+        pm.getPackageInfo(pkg, 0)
+        PkgPresence.INSTALLED
     } catch (_: PackageManager.NameNotFoundException) {
         PkgPresence.MISSING
     } catch (e: Throwable) {

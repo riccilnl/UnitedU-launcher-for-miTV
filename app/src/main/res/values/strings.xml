@@ -1,6 +1,5 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <string name="mitv_kids_channel">小米儿童频道</string>
     <string name="app_name">UnitedU</string>
 
     <!-- menu_* : 齿轮菜单与菜单项 -->

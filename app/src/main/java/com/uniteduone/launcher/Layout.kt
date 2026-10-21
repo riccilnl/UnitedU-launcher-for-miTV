@@ -113,8 +113,8 @@ internal val layoutWrites: CoroutineDispatcher = Dispatchers.IO.limitedParalleli
  * (与「跳过」相同),桌面空着但编辑页的「+」都在,不是死胡同。在 [Layout] 的锁里调用(IO 线程)。
  */
 internal fun installedDefaultLayout(ctx: Context): List<LayoutRow> =
-    runCatching { plannedLayout(defaultLayoutForDevice(ctx), installedDefaultApps(ctx).keys) }
-        .getOrElse { skippedLayout(defaultLayoutForDevice(ctx)) }
+    runCatching { plannedLayout(DEFAULT_LAYOUT, installedDefaultApps(ctx).keys) }
+        .getOrElse { skippedLayout(DEFAULT_LAYOUT) }
 
 /** R164:至少有一行应用行。[Layout.parse] 与 [Layout.write] 共用这一条,写出去的东西一定读得回来。 */
 internal fun hasAppRow(rows: List<LayoutRow>): Boolean = rows.any { !it.isChannel }
@@ -144,11 +144,8 @@ object Layout {
         // 不先试 .prev 就写默认的话,每次开机都静默退回默认,用户只看到「我排的顺序又没了」。
         when (val got = store.load(base, log = { Log.w(TAG, it) }, parse = ::parse)) {
             is LockedFile.Load.Ok -> {
-                // A one-time, lossless migration from the first Freeguy test APK.
-                // Do not overwrite a user's already customized card placement.
-                val rows = mergeLegacyKidsRow(got.value)
-                if (got.restored || rows !== got.value) write(ctx, rows)
-                rows
+                if (got.restored) write(ctx, got.value)
+                got.value
             }
             // Missing = 正式文件与 .prev 都不在:真正的首次运行;Corrupt = 一份都解析不了。
             // 写回的默认值**按已装过滤**(Ruling R68,与首次引导「继续」同一口径:plannedLayout + installedDefaultApps):

@@ -43,41 +43,13 @@ object Apps {
             runCatching { pm.queryIntentActivities(intent, 0) }.getOrDefault(emptyList())
                 .firstOrNull()?.let { found[pkg] = it }
         }
-        val apps = found.mapValues { (pkg, ri) ->
+        return found.mapValues { (pkg, ri) ->
             // **逐包兜底,不是整批**。原来整个 mapValues 外面才有一层 runCatching:
             // 任何一个包在被替换的中间态下 loadBanner/loadIcon 抛异常,整张桌面就变成空的,
             // 而重建恰恰由 PACKAGE_CHANGED 触发 —— 正是最容易抛的那一刻。
             runCatching { entryOf(ctx, pm, pkg, ri, withBitmaps, withLabels) }
                 .getOrElse { AppEntry(pkg, "", null, isWide = false) }
         }
-        return if (MiTvKidsChannel.available(ctx)) {
-            apps + (MiTvKidsChannel.SHORTCUT_ID to kidsEntry(ctx, withBitmaps, withLabels))
-        } else apps
-    }
-
-    /** An app-like shortcut; no Xiaomi data is read and no special permissions are requested. */
-    private fun kidsEntry(
-        ctx: Context,
-        withBitmaps: Set<String>?,
-        withLabels: Set<String>?,
-        useCustom: Boolean = true,
-    ): AppEntry {
-        val id = MiTvKidsChannel.SHORTCUT_ID
-        val label = if (withLabels == null || id in withLabels) ctx.getString(R.string.mitv_kids_channel) else ""
-        val bmp = if (withBitmaps != null && id !in withBitmaps) null else {
-            val custom = if (useCustom) runCatching {
-                Paths.iconFor(ctx, id).takeIf { it.exists() }?.let {
-                    decodeScaled(it.absolutePath, CARD_W, CARD_H)
-                }
-            }.getOrNull() else null
-            custom ?: runCatching {
-                val ai = ctx.packageManager.getActivityInfo(
-                    android.content.ComponentName(MiTvKidsChannel.STOCK_PACKAGE, MiTvKidsChannel.ACTIVITY), 0
-                )
-                drawableOf(ai.loadIcon(ctx.packageManager))
-            }.getOrNull()
-        }
-        return AppEntry(id, label, bmp, isWide = false, fallbackColor = bmp?.let(::iconBackdrop))
     }
 
     /** 按两个启动分类枚举(LEANBACK 优先),包名 → 它的入口。 */
@@ -160,11 +132,6 @@ object Apps {
                 )
             }
         }
-        if (MiTvKidsChannel.SHORTCUT_ID !in exclude && MiTvKidsChannel.available(ctx)) {
-            out += PickerCandidate(
-                kidsEntry(ctx, emptySet(), null), PickerGroup.APPS, canUninstall = false
-            )
-        }
         return orderPickerCandidates(out)
     }
 
@@ -243,7 +210,6 @@ object Apps {
 
     /** @return 是否真的起来了;起不来时调用方要给提示,别让用户以为遥控器坏了。 */
     fun launch(ctx: Context, pkg: String): Boolean {
-        if (pkg == MiTvKidsChannel.SHORTCUT_ID) return MiTvKidsChannel.launch(ctx)
         val pm = ctx.packageManager
         val intent = pm.getLeanbackLaunchIntentForPackage(pkg)
             ?: pm.getLaunchIntentForPackage(pkg)
@@ -308,9 +274,6 @@ object Apps {
      * 读不到(包正被替换、没有入口)返回 null,调用方画占位底。**IO 线程调用**。
      */
     fun pickerCard(ctx: Context, pkg: String): AppEntry? {
-        if (pkg == MiTvKidsChannel.SHORTCUT_ID) {
-            return if (MiTvKidsChannel.available(ctx)) kidsEntry(ctx, null, null) else null
-        }
         val pm = ctx.packageManager
         val updated = runCatching { pm.getPackageInfo(pkg, 0).lastUpdateTime }.getOrNull() ?: return null
         val stamp = "$updated/${runCatching { Paths.iconFor(ctx, pkg).lastModified() }.getOrDefault(0L)}"
@@ -347,9 +310,6 @@ object Apps {
      * 应用级 banner、不过横幅判据,预览和恢复后的卡面可能不是同一张。
      */
     fun originalIcon(ctx: Context, pkg: String): Bitmap? = runCatching {
-        if (pkg == MiTvKidsChannel.SHORTCUT_ID) {
-            return@runCatching kidsEntry(ctx, null, null, useCustom = false).card
-        }
         val pm = ctx.packageManager
         val ri = launcherEntryOf(pm, pkg) ?: exportedMain(pm, pkg) ?: return@runCatching null
         entryOf(ctx, pm, pkg, ri, withBitmaps = null, withLabels = emptySet(), useCustom = false).card
@@ -357,8 +317,7 @@ object Apps {
 
     /** 包是否已安装(有 QUERY_ALL_PACKAGES,看得见所有包)。IO 线程调用。 */
     fun isInstalled(ctx: Context, pkg: String): Boolean =
-        if (pkg == MiTvKidsChannel.SHORTCUT_ID) MiTvKidsChannel.available(ctx)
-        else runCatching { ctx.packageManager.getPackageInfo(pkg, 0) }.isSuccess
+        runCatching { ctx.packageManager.getPackageInfo(pkg, 0) }.isSuccess
 
     /** 包的应用名(频道行行头、选频道页「应用名 · 频道名」用;发布方不一定有启动入口,所以不走 [load])。读不到 → 包名。IO 线程。 */
     fun labelOf(ctx: Context, pkg: String): String = runCatching {

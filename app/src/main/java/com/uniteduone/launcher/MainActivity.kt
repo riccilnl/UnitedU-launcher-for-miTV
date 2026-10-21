@@ -2059,9 +2059,7 @@ class MainActivity : ComponentActivity() {
      * 长按菜单项:六项见 design §2([cardMenuActions]);这里只管每一项按下去做什么。
      * (R92 起首页没有输入源行,输入源卡的文案分流与 HIDE 一项随之删掉,输入源的改名 / 隐藏在「输入源」页。)
      */
-    private fun cardMenuItems(ref: CardRef): List<MenuItem> = cardMenuActions()
-        .filterNot { ref.pkg == MiTvKidsChannel.SHORTCUT_ID && it == CardAction.UNINSTALL }
-        .map { action ->
+    private fun cardMenuItems(ref: CardRef): List<MenuItem> = cardMenuActions().map { action ->
         when (action) {
             CardAction.OPEN -> MenuItem(getString(R.string.card_menu_open), getString(R.string.card_menu_open_desc)) {
                 closeCardMenu()
