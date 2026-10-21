@@ -1,0 +1,31 @@
+name: Publish Freeguy smoke-test APK
+
+on:
+  push:
+    branches: [freeguy]
+    paths: [.github/workflows/publish-freeguy-test.yml]
+
+permissions:
+  actions: read
+  contents: write
+
+jobs:
+  publish:
+    runs-on: ubuntu-24.04
+    steps:
+      - name: Download the already-verified test artifact
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: gh run download 39454534902 --repo "${{ github.repository }}" --name unitedu-freeguy-debug-apk --dir out
+      - name: Publish clearly labeled prerelease
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          test -s out/app-debug.apk
+          sha256sum out/app-debug.apk
+          gh release create freeguy-smoke-20261021 out/app-debug.apk \
+            --repo "${{ github.repository }}" \
+            --target 7339a4995cd347b63aec041b56b04aadf3683905 \
+            --title "Freeguy smoke test — not a production release" \
+            --notes "Temporary debug APK from successful workflow 39454534902. The Xiaomi children-channel shortcut is NOT validated and currently opens the wrong special-topic page. Do not enable HOME takeover. Signed with CI debug identity; do not rely on in-place upgrades." \
+            --prerelease
