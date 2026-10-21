@@ -2,33 +2,36 @@
 
 ## 目标
 
-女儿原来从小米正常桌面的「儿童」栏目看动画片。UnitedU 必须保留这个
-**小米原厂频道**入口，不得把独立的「儿童模式」误当成原频道。
+女儿原来使用小米原厂桌面顶部「儿童」栏目，不能把「儿童模式」或独立儿童专题页当成同一个入口。
 
-## 实现
+## 已确认的原厂接口
 
-- 在 UnitedU 增加仅 `freeguy / MiTV-MFTR0` 可见的「小米儿童频道」特殊卡片。
-- 首次初始化布局时，若检测到官方入口可用，在第一行放一个儿童分类卡片。
-- 已经保存过的 UnitedU 布局不被覆盖；用户也可以通过「添加应用」自行加入卡片。
-- 卡片调用官方 `com.mitv.tvhome` 内导出的：
-  `android.intent.action.ENTER_KIDS_MULTIPLE_TABS` →
-  `com.mitv.tvhome.business.kiddesk.KidsMultipleTabsActivity`。
-- **绝不**调用 `ENTER_KIDS_MODE`（这是独立儿童模式），不重建小米推荐或播放器，
-  不清除、读写或迁移观看记录、账号、家长控制设置、儿童锁或付费状态。
-- `com.mitv.tvhome` 必须保持安装、启用，不能因启用 UnitedU 就冻结/删除。
-- 在应用选择器中按普通卡片添加，但虚拟卡片不能卸载 APK。
-- 虚拟条目的存活判断使用原厂入口可用性，防止启动清理错误删除卡片。
+2026-10-21 在用户实际固件 OS2.0.5.0.RFTMATV / Android 11 上，以保留小米桌面的方式通过 ADB 实测：
 
-## 验收（必须在用户实际固件上确认）
+```sh
+adb shell am start -W -a com.mitv.tvhome.HOME_PAGE \
+  -n com.mitv.tvhome/.MainActivity --es page '儿童'
+```
 
-静态依据：从电视提取的 `com.mitv.tvhome 3.49.1601` 的 Manifest
-存在上述带 DEFAULT 的 Activity Intent Filter；没有对这个入口做实机跳转验证。
+实际出现小米原厂顶部「儿童」栏目，内容包括动画推荐及继续观看，底部原始应用内容和账号均保持原样。这不涉及 `KidsMultipleTabsActivity`（专题页）或 `ENTER_KIDS_MODE`（儿童模式）。
 
-1. 保持小米原厂桌面为 HOME，在 UnitedU 内点「小米儿童频道」。
-2. 与女儿熟悉的小米桌面「儿童」栏目逐页对比，确认入口没有误入儿童模式。
-3. 核对推荐、观看历史、收藏、账号与家长控制均在小米应用内仍可使用。
-4. 退出小米内容后正常返回 UnitedU；官方 Home 键回原厂桌面不会造成无法返回。
-5. 重启一次，再次点击儿童卡片，验证仍进入同一个原厂频道。
-6. **如果任一项失败，保持原厂桌面，禁止将 UnitedU 切为默认 HOME。**
+`MainActivity` 是 `MainActivityUserMode` 的导出 activity-alias；该固件中 `onNewIntent` 对 `com.mitv.tvhome.HOME_PAGE` 读取 `page` 参数并调用 `moveToPageByTitle`。
 
-当前电视 IP `10.15.1.21` 离线，本轮未通过真实电视测试。
+## UnitedU 兼容性实现
+
+- 仅 MiTV-MFTR0/freeguy 显示「小米儿童频道」应用型快捷卡片。
+- 直接调用原厂 `com.mitv.tvhome.HOME_PAGE`，extra `page=儿童`，绝不重新实现推荐、播放、收藏或家长控制。
+- 默认将卡片放在 `movie` 影视应用行，紧挨 `com.xiaodianshi.tv.yst`（哔哩哔哩），不创建单独的儿童行。首次引导只添加已存在的应用卡片。
+- 从此前测试版升级时，若存在**准确匹配旧版的独立儿童行**，将该虚拟卡片迁移至哔哩哔哩所在行，或 movie 行，不覆盖其余布局与排序。已自行整理好的卡片不会被重排。
+- 保留 `com.mitv.tvhome`、儿童相关应用数据、账号、观看记录、收藏、家长控制与儿童锁。
+- 不冻结、卸载原厂桌面，也不自动接管 Home。虚拟卡片在菜单中禁止卸载。
+- 当前发布的 `freeguy-smoke-20261021` 旧版 APK **仍然是错误的儿童专题页入口**，只能作为历史基础桌面测试，不作为已修复版本。
+
+## 未完成的验收
+
+上述正确入口已通过 **ADB Shell 调用**验证，但尚未从安装的新版 UnitedU 卡片自身点击验证第三方应用权限与冷启动路径。
+
+1. 编译并签名新版测试 APK，再安装到电视，保留官方默认 HOME。
+2. 从 UnitedU 真实点击「小米儿童频道」卡片，确认进入顶部儿童栏目而非专题页或儿童模式。
+3. 核对观看记录、推荐、遥控器返回/退出及重启后再次进入的行为。
+4. 仅所有验收通过后，才能考虑启用 UnitedU 的 Home 接管。

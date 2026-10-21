@@ -144,8 +144,11 @@ object Layout {
         // 不先试 .prev 就写默认的话,每次开机都静默退回默认,用户只看到「我排的顺序又没了」。
         when (val got = store.load(base, log = { Log.w(TAG, it) }, parse = ::parse)) {
             is LockedFile.Load.Ok -> {
-                if (got.restored) write(ctx, got.value)
-                got.value
+                // A one-time, lossless migration from the first Freeguy test APK.
+                // Do not overwrite a user's already customized card placement.
+                val rows = mergeLegacyKidsRow(got.value)
+                if (got.restored || rows !== got.value) write(ctx, rows)
+                rows
             }
             // Missing = 正式文件与 .prev 都不在:真正的首次运行;Corrupt = 一份都解析不了。
             // 写回的默认值**按已装过滤**(Ruling R68,与首次引导「继续」同一口径:plannedLayout + installedDefaultApps):
