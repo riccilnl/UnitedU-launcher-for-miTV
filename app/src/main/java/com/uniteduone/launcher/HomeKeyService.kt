@@ -40,15 +40,6 @@ class HomeKeyService : AccessibilityService() {
     // 补查时再按它重判一遍 [onWindowChanged]:去抖期间我们自己的 MainActivity 窗口已经落地的话,lastWindow 早被它换掉,补查什么都不做。
     private var lastWindow: Pair<String, String>? = null
     private val handler = Handler(Looper.getMainLooper())
-    private val xiaomiProbe = XiaomiHomeProbe(
-        service = this,
-        handler = handler,
-        stockHomeActive = {
-            active && lastWindow in stockHomes &&
-                lastWindow?.first == "com.mitv.tvhome"
-        },
-        onHomeSelected = { launch("xiaomi-selected-home") },
-    )
     private val recheck = Runnable {
         val w = lastWindow ?: return@Runnable
         if (onWindowChanged(active, w.first, w.second, stockHomes, lastLaunchAt, SystemClock.elapsedRealtime())) launch("recheck:${w.first}")
@@ -66,9 +57,9 @@ class HomeKeyService : AccessibilityService() {
 
     override fun onServiceConnected() {
         val info = serviceInfo ?: AccessibilityServiceInfo()
-        info.eventTypes = AccessibilityEvent.TYPE_WINDOW_STATE_CHANGED or (if (MiTvFreeguy.isDevice()) AccessibilityEvent.TYPE_WINDOW_CONTENT_CHANGED else 0)
+        info.eventTypes = AccessibilityEvent.TYPE_WINDOW_STATE_CHANGED
         info.feedbackType = AccessibilityServiceInfo.FEEDBACK_GENERIC
-        info.flags = info.flags or AccessibilityServiceInfo.FLAG_REQUEST_FILTER_KEY_EVENTS or (if (MiTvFreeguy.isDevice()) AccessibilityServiceInfo.FLAG_REPORT_VIEW_IDS else 0)
+        info.flags = info.flags or AccessibilityServiceInfo.FLAG_REQUEST_FILTER_KEY_EVENTS
         info.notificationTimeout = 0
         serviceInfo = info
         dreaming = false
@@ -91,7 +82,6 @@ class HomeKeyService : AccessibilityService() {
     }
 
     override fun onUnbind(intent: Intent?): Boolean {
-        xiaomiProbe.cancel()
         handler.removeCallbacksAndMessages(null)
         lastWindow = null
         runCatching { unregisterReceiver(dreamReceiver) }
@@ -120,29 +110,11 @@ class HomeKeyService : AccessibilityService() {
     }
 
     override fun onAccessibilityEvent(event: AccessibilityEvent) {
-        if (event.eventType == AccessibilityEvent.TYPE_WINDOW_CONTENT_CHANGED) {
-            if (MiTvFreeguy.isDevice() && active &&
-                event.packageName?.toString() == "com.mitv.tvhome" &&
-                lastWindow in stockHomes) {
-                xiaomiProbe.schedule()
-            }
-            return
-        }
         if (event.eventType != AccessibilityEvent.TYPE_WINDOW_STATE_CHANGED) return
         val pkg = event.packageName?.toString()
         val cls = event.className?.toString()
         val now = SystemClock.elapsedRealtime()
         if (pkg != null && cls != null) lastWindow = pkg to cls
-        if (MiTvFreeguy.isDevice()) {
-            // The Xiaomi HOME Activity is ALSO the kids channel Activity.
-            // Never redirect on a window event alone: inspect the selected tab.
-            if (pkg == "com.mitv.tvhome" && cls != null &&
-                (pkg to cls) in stockHomes) {
-                xiaomiProbe.schedule()
-                return
-            }
-            xiaomiProbe.cancel()
-        }
         // 别的桌面来了才值得重算(resolveActivity / queryIntentActivities 是 binder 调用,窗口事件很频繁)
         if (pkg != null && pkg != packageName && stockHomes.any { it.first == pkg }) refresh(force = false)
         if (onWindowChanged(active, pkg, cls, stockHomes, lastLaunchAt, now)) {
