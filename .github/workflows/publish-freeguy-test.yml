@@ -1,4 +1,4 @@
-name: Publish Freeguy smoke-test APK
+name: Publish MiTV Kids Shortcut Test APK
 
 on:
   push:
@@ -16,16 +16,16 @@ jobs:
       - name: Download the already-verified test artifact
         env:
           GH_TOKEN: ${{ github.token }}
-        run: gh run download 39454534902 --repo "${{ github.repository }}" --name unitedu-freeguy-debug-apk --dir out
+        run: gh run download 39534853682 --repo "${{ github.repository }}" --name mitv-kids-shortcut-debug --dir out
       - name: Publish clearly labeled prerelease
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
           test -s out/app-debug.apk
           sha256sum out/app-debug.apk
-          gh release create freeguy-smoke-20261021 out/app-debug.apk \
+          gh release create mitv-kids-shortcut-smoke-20261021 'out/app-debug.apk#mitv-kids-shortcut.apk' \
             --repo "${{ github.repository }}" \
-            --target 7339a4995cd347b63aec041b56b04aadf3683905 \
-            --title "Freeguy smoke test — not a production release" \
-            --notes "Temporary debug APK from successful workflow 39454534902. The Xiaomi children-channel shortcut is NOT validated and currently opens the wrong special-topic page. Do not enable HOME takeover. Signed with CI debug identity; do not rely on in-place upgrades." \
+            --target 2077e687ae7470a12d1df4340f48f07068ae37b8 \
+            --title "MiTV Kids Shortcut — standalone test APK" \
+            --notes "Standalone APK from successful workflow 39534853682. Launches the real Xiaomi HOME_PAGE children tab (page=儿童). No UnitedU dependency, no account or watch-history permissions. Test build only: launching from a third-party APK is not yet device-verified; debug signing is not stable for future in-place upgrades." \
             --prerelease
